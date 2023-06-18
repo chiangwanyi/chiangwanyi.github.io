@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chiangwanyi's Blog - List</title>
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/ui.css">
+    <link rel="stylesheet" href="css/markdown.css">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+</head>
+
+<body>
+    <div class="paper" id="app">
+        <div class="paper-main">
+            <div class="header">
+                <div class="header-container">
+                    <div class="header-content">
+                        <a class="logo" href="/">Chiangwanyi</a>
+                        <span class="description">:)</span>
+                    </div>
+                </div>
+                <ul class="nav">
+                    <li><a href="/">首页</a></li>
+                    <li><a href="/list.html">文章</a></li>
+                    <li><a href="/categories.html">分类</a></li>
+                    <li><a href="/about.html">关于</a></li>
+                </ul>
+            </div>
+            <!-- Part Start -->
+            <div class="archive-list">
+                <ul class="archive">
+                    <div v-for="item in statistics">
+                        <span class="year-font-color">{{item[0]}}[{{item[1].length}}]</span>
+                        <li v-for="article in item[1]">
+                            <span class="archive-date">{{calcMonth(article.createdAt)}}/{{calcDate(article.createdAt)}}</span>
+                            <div class="archive-main">
+                                <a class="archive-title"
+                                    :href='"/categories/" + article.categorie'>{{article.categorie}}</a>&nbsp;|&nbsp;<a
+                                    class="archive-title" :href='"/article/" + article.title'>{{article.title}}</a>
+                            </div>
+                        </li>
+                    </div>
+                </ul>
+            </div>
+            <!-- Part End -->
+        </div>
+    </div>
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    message: 'Hello Vue!',
+                    statistics: new Map()
+                }
+            },
+            created() {
+                axios.get("/db/db.json")
+                    .then(res => {
+                        var data = res.data;
+                        data.articles.forEach(a => {
+                            var createdAt = new Date(a.createdAt * 1000);
+                            createdAt.getMonth()
+                            var articles = this.statistics.get(createdAt.getFullYear());
+                            if (articles === undefined) {
+                                articles = [];
+                            }
+                            articles.push(a)
+                            this.statistics.set(createdAt.getFullYear(), articles);
+                        });
+                    });
+            },
+            methods: {
+                calcMonth(createdAt) {
+                    var date = new Date(createdAt * 1000);
+                    return (date.getMonth() + 1 + "").padStart(2, "0");
+                },
+                calcDate(createdAt) {
+                    var date = new Date(createdAt * 1000);
+                    return (date.getDate() + "").padStart(2, "0");
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,43 @@
+{
+    "categories": [
+        {
+            "name": "开发",
+            "parent": "ROOT"
+        },
+        {
+            "name": "Zookeeper",
+            "parent": "开发"
+        }
+    ],
+    "articles": [
+        {
+            "title": "Zookeeper入门.md",
+            "createdAt": 1687017600,
+            "updatedAt": 1687017600,
+            "categorie": "Zookeeper",
+            "version": 1
+        },
+        {
+            "title": "Java",
+            "createdAt": 1678586400,
+            "updatedAt": 1687017600,
+            "categorie": "开发",
+            "version": 1
+        },
+        {
+            "title": "Spring",
+            "createdAt": 1647050400,
+            "updatedAt": 1687017600,
+            "categorie": "开发",
+            "version": 1
+        },
+        {
+            "title": "Spring 学习",
+            "createdAt": 1576116000,
+            "updatedAt": 1687017600,
+            "categorie": "开发",
+            "version": 1
+        }
+    ],
+    "updatedAt": "1687017600"
+}
