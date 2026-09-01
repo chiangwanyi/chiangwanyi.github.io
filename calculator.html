@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>报销记账计算器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #f5f7fa;
+            padding: 12px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .home-link-wrap {
+            margin-bottom:12px;
+        }
+        .home-link {
+            color:#2563eb;
+            text-decoration:none;
+            font-size:15px;
+        }
+        .home-link:hover {
+            text-decoration: underline;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+        .display-area {
+            padding: 20px 16px;
+            background-color: #1f2937;
+            color: #fff;
+        }
+        .expr {
+            font-size: 16px;
+            color:#9ca3af;
+            min-height:22px;
+            word-break: break-all;
+        }
+        .result-num {
+            font-size: 32px;
+            margin:8px 0;
+            text-align:right;
+            word-break: break-all;
+        }
+        .rmb-upper {
+            font-size:14px;
+            color:#fbbf24;
+            text-align:right;
+            word-break: break-all;
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap:10px;
+            padding:16px;
+        }
+        button {
+            font-size:20px;
+            padding:16px 8px;
+            border:none;
+            border-radius:10px;
+            cursor:pointer;
+        }
+        .btn-num {
+            background-color:#f3f4f6;
+        }
+        .btn-op {
+            background-color:#3b82f6;
+            color:white;
+        }
+        .btn-clear {
+            background-color:#ef4444;
+            color:white;
+        }
+        .btn-eq {
+            background-color:#10b981;
+            color:white;
+        }
+        .history-box {
+            margin-top:16px;
+            background:#fff;
+            border-radius:16px;
+            padding:16px;
+            box-shadow:0 2px 12px rgba(0,0,0,0.08);
+        }
+        .history-title {
+            font-weight:bold;
+            margin-bottom:10px;
+            font-size:15px;
+        }
+        .history-item {
+            padding:8px 6px;
+            border-bottom:1px solid #eee;
+            cursor:pointer;
+            font-size:14px;
+        }
+        .history-item:active {
+            background:#eef2ff;
+        }
+    </style>
+</head>
+<body>
+    <div class="home-link-wrap">
+        <a href="./index.html" class="home-link">← 返回首页</a>
+    </div>
+    <div class="container">
+        <div class="display-area">
+            <div class="expr" id="exprView"></div>
+            <div class="result-num" id="numView">0</div>
+            <div class="rmb-upper" id="upperView">人民币零元整</div>
+        </div>
+        <div class="btn-grid">
+            <button class="btn-clear" onclick="clearAll()">C</button>
+            <button class="btn-op" onclick="inputChar('/')">÷</button>
+            <button class="btn-op" onclick="inputChar('*')">×</button>
+            <button class="btn-op" onclick="inputChar('-')">-</button>
+
+            <button class="btn-num" onclick="inputChar('7')">7</button>
+            <button class="btn-num" onclick="inputChar('8')">8</button>
+            <button class="btn-num" onclick="inputChar('9')">9</button>
+            <button class="btn-op" onclick="inputChar('+')">+</button>
+
+            <button class="btn-num" onclick="inputChar('4')">4</button>
+            <button class="btn-num" onclick="inputChar('5')">5</button>
+            <button class="btn-num" onclick="inputChar('6')">6</button>
+            <button class="btn-num" onclick="inputChar('.')">.</button>
+
+            <button class="btn-num" onclick="inputChar('1')">1</button>
+            <button class="btn-num" onclick="inputChar('2')">2</button>
+            <button class="btn-num" onclick="inputChar('3')">3</button>
+            <button class="btn-eq" onclick="calc()">=</button>
+
+            <button class="btn-num" onclick="inputChar('0')">0</button>
+            <button class="btn-num" onclick="backspace()">⌫</button>
+        </div>
+    </div>
+
+    <div class="history-box">
+        <div class="history-title">📜 计算历史（点击恢复输入）</div>
+        <div id="historyList"></div>
+    </div>
+
+<script>
+    let expression = "";
+    let historyArr = [];
+
+    const exprDom = document.getElementById("exprView");
+    const numDom = document.getElementById("numView");
+    const upperDom = document.getElementById("upperView");
+    const historyDom = document.getElementById("historyList");
+
+    // 数字转人民币大写
+    function numberToChineseRMB(num) {
+        if(isNaN(num) || !isFinite(num)) return "金额错误";
+        num = Number(num.toFixed(2));
+        const digits = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
+        const units = ['','拾','佰','仟'];
+        const bigUnits = ['','万','亿'];
+        let yuan = Math.floor(num);
+        let jiao = Math.floor((num - yuan)*10);
+        let fen = Math.floor(((num - yuan)*100) %10);
+
+        function intToChinese(n){
+            if(n===0) return "零";
+            let s = "";
+            let pos = 0;
+            let zeroFlag = false;
+            while(n>0){
+                let d = n%10;
+                if(d>0){
+                    if(zeroFlag) s = digits[0] + s;
+                    s = digits[d] + units[pos%4] + s;
+                    zeroFlag = false;
+                }else{
+                    zeroFlag = true;
+                }
+                if(pos%4 === 0 && pos>0){
+                    s = bigUnits[pos/4] + s;
+                }
+                n = Math.floor(n/10);
+                pos++;
+            }
+            return s;
+        }
+        let res = "人民币";
+        res += intToChinese(yuan)+"元";
+        if(jiao===0 && fen===0){
+            res += "整";
+        }else{
+            if(jiao>0) res += digits[jiao]+"角";
+            else if(fen>0) res += "零";
+            if(fen>0) res += digits[fen]+"分";
+        }
+        return res;
+    }
+
+    function render(){
+        exprDom.innerText = expression;
+        try{
+            if(!expression){
+                numDom.innerText = "0";
+                upperDom.innerText = numberToChineseRMB(0);
+                return;
+            }
+            // 替换 × 为 *
+            let evalStr = expression.replace(/×/g,"*");
+            let val = eval(evalStr);
+            numDom.innerText = val;
+            upperDom.innerText = numberToChineseRMB(val);
+        }catch(e){
+            numDom.innerText = "--";
+            upperDom.innerText = "";
+        }
+    }
+
+    function inputChar(c){
+        expression += c;
+        render();
+    }
+
+    function backspace(){
+        expression = expression.slice(0,-1);
+        render();
+    }
+
+    function clearAll(){
+        expression = "";
+        render();
+    }
+
+    function calc(){
+        try{
+            if(!expression) return;
+            let evalStr = expression.replace(/×/g,"*");
+            let result = eval(evalStr);
+            //存入历史
+            historyArr.unshift({expr:expression, res:result});
+            if(historyArr.length>20) historyArr.pop();
+            refreshHistory();
+            render();
+        }catch(err){
+            numDom.innerText="计算错误";
+        }
+    }
+
+    function refreshHistory(){
+        historyDom.innerHTML = "";
+        historyArr.forEach((item,idx)=>{
+            const div = document.createElement("div");
+            div.className = "history-item";
+            div.innerText = `${item.expr} = ${item.res}`;
+            div.onclick = ()=>{
+                expression = item.expr;
+                render();
+            }
+            historyDom.appendChild(div);
+        })
+    }
+
+    //键盘输入支持
+    document.addEventListener("keydown",(e)=>{
+        const key = e.key;
+        if(/[0-9\.\+\-\/\*]/.test(key)){
+            let kc = key;
+            if(kc === "*") kc = "×";
+            inputChar(kc);
+        }else if(key === "Enter" || key === "="){
+            calc();
+        }else if(key === "Backspace"){
+            backspace();
+        }else if(key.toLowerCase() === "c"){
+            clearAll();
+        }
+    })
+
+    render();
+</script>
+</body>
+</html>
