@@ -158,24 +158,27 @@
     const upperDom = document.getElementById("upperView");
     const historyDom = document.getElementById("historyList");
 
-    // 数字转人民币大写
-    function numberToChineseRMB(num) {
-        if(isNaN(num) || !isFinite(num)) return "金额错误";
-        num = Number(num.toFixed(2));
+    // 财务金额转大写，修复浮点数问题，入参为标准Number
+    function numberToChineseRMB(money) {
+        if(isNaN(money) || !isFinite(money)) return "金额错误";
+        // 四舍五入保留2位小数，转分为整数
+        const fen = Math.round(money * 100);
+        const yuan = Math.floor(fen / 100);
+        const jiao = Math.floor((fen % 100)/10);
+        const cent = fen % 10;
+
         const digits = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
         const units = ['','拾','佰','仟'];
         const bigUnits = ['','万','亿'];
-        let yuan = Math.floor(num);
-        let jiao = Math.floor((num - yuan)*10);
-        let fen = Math.floor(((num - yuan)*100) %10);
 
         function intToChinese(n){
             if(n===0) return "零";
             let s = "";
             let pos = 0;
             let zeroFlag = false;
-            while(n>0){
-                let d = n%10;
+            let temp = n;
+            while(temp>0){
+                let d = temp%10;
                 if(d>0){
                     if(zeroFlag) s = digits[0] + s;
                     s = digits[d] + units[pos%4] + s;
@@ -186,19 +189,25 @@
                 if(pos%4 === 0 && pos>0){
                     s = bigUnits[pos/4] + s;
                 }
-                n = Math.floor(n/10);
+                temp = Math.floor(temp/10);
                 pos++;
             }
             return s;
         }
+
         let res = "人民币";
         res += intToChinese(yuan)+"元";
-        if(jiao===0 && fen===0){
+        if(jiao===0 && cent===0){
             res += "整";
         }else{
-            if(jiao>0) res += digits[jiao]+"角";
-            else if(fen>0) res += "零";
-            if(fen>0) res += digits[fen]+"分";
+            if(jiao>0){
+                res += digits[jiao]+"角";
+            }else if(cent>0){
+                res += "零";
+            }
+            if(cent>0){
+                res += digits[cent]+"分";
+            }
         }
         return res;
     }
@@ -211,9 +220,10 @@
                 upperDom.innerText = numberToChineseRMB(0);
                 return;
             }
-            // 替换 × 为 *
             let evalStr = expression.replace(/×/g,"*");
-            let val = eval(evalStr);
+            let val = Number(eval(evalStr));
+            // 关键：四舍五入2位小数，消除浮点垃圾
+            val = Math.round(val * 100) / 100;
             numDom.innerText = val;
             upperDom.innerText = numberToChineseRMB(val);
         }catch(e){
@@ -241,8 +251,8 @@
         try{
             if(!expression) return;
             let evalStr = expression.replace(/×/g,"*");
-            let result = eval(evalStr);
-            //存入历史
+            let result = Number(eval(evalStr));
+            result = Math.round(result *100)/100;
             historyArr.unshift({expr:expression, res:result});
             if(historyArr.length>20) historyArr.pop();
             refreshHistory();
@@ -254,7 +264,7 @@
 
     function refreshHistory(){
         historyDom.innerHTML = "";
-        historyArr.forEach((item,idx)=>{
+        historyArr.forEach((item)=>{
             const div = document.createElement("div");
             div.className = "history-item";
             div.innerText = `${item.expr} = ${item.res}`;
