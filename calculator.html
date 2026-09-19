@@ -1,298 +1,174 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>报销记账计算器</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #f5f7fa;
-            padding: 12px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-        .home-link-wrap {
-            margin-bottom:12px;
-        }
-        .home-link {
-            color:#2563eb;
-            text-decoration:none;
-            font-size:15px;
-        }
-        .home-link:hover {
-            text-decoration: underline;
-        }
-        .container {
-            background: #ffffff;
-            border-radius: 16px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-            overflow: hidden;
-        }
-        .display-area {
-            padding: 20px 16px;
-            background-color: #1f2937;
-            color: #fff;
-        }
-        .expr {
-            font-size: 16px;
-            color:#9ca3af;
-            min-height:22px;
-            word-break: break-all;
-        }
-        .result-num {
-            font-size: 32px;
-            margin:8px 0;
-            text-align:right;
-            word-break: break-all;
-        }
-        .rmb-upper {
-            font-size:14px;
-            color:#fbbf24;
-            text-align:right;
-            word-break: break-all;
-        }
-        .btn-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap:10px;
-            padding:16px;
-        }
-        button {
-            font-size:20px;
-            padding:16px 8px;
-            border:none;
-            border-radius:10px;
-            cursor:pointer;
-        }
-        .btn-num {
-            background-color:#f3f4f6;
-        }
-        .btn-op {
-            background-color:#3b82f6;
-            color:white;
-        }
-        .btn-clear {
-            background-color:#ef4444;
-            color:white;
-        }
-        .btn-eq {
-            background-color:#10b981;
-            color:white;
-        }
-        .history-box {
-            margin-top:16px;
-            background:#fff;
-            border-radius:16px;
-            padding:16px;
-            box-shadow:0 2px 12px rgba(0,0,0,0.08);
-        }
-        .history-title {
-            font-weight:bold;
-            margin-bottom:10px;
-            font-size:15px;
-        }
-        .history-item {
-            padding:8px 6px;
-            border-bottom:1px solid #eee;
-            cursor:pointer;
-            font-size:14px;
-        }
-        .history-item:active {
-            background:#eef2ff;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>报销记账计算器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 </head>
-<body>
-    <div class="home-link-wrap">
-        <a href="./index.html" class="home-link">← 返回首页</a>
-    </div>
-    <div class="container">
-        <div class="display-area">
-            <div class="expr" id="exprView"></div>
-            <div class="result-num" id="numView">0</div>
-            <div class="rmb-upper" id="upperView">人民币零元整</div>
-        </div>
-        <div class="btn-grid">
-            <button class="btn-clear" onclick="clearAll()">C</button>
-            <button class="btn-op" onclick="inputChar('/')">÷</button>
-            <button class="btn-op" onclick="inputChar('*')">×</button>
-            <button class="btn-op" onclick="inputChar('-')">-</button>
+<body class="bg-gray-100 min-h-screen p-3 text-gray-800">
+  <div id="app" class="max-w-xl mx-auto">
+    <a href="./index.html" class="text-blue-600 text-[15px] no-underline hover:underline">← 返回首页</a>
 
-            <button class="btn-num" onclick="inputChar('7')">7</button>
-            <button class="btn-num" onclick="inputChar('8')">8</button>
-            <button class="btn-num" onclick="inputChar('9')">9</button>
-            <button class="btn-op" onclick="inputChar('+')">+</button>
+    <div class="mt-3 bg-white rounded-2xl shadow overflow-hidden">
+      <!-- 显示区 -->
+      <div class="bg-gray-800 text-white px-5 py-4">
+        <div class="text-sm text-gray-400 min-h-[22px] break-all">{{ expression || '' }}</div>
+        <div class="text-3xl my-2 text-right break-all">{{ display.num }}</div>
+        <div class="text-sm text-amber-400 text-right break-all">{{ display.upper }}</div>
+      </div>
 
-            <button class="btn-num" onclick="inputChar('4')">4</button>
-            <button class="btn-num" onclick="inputChar('5')">5</button>
-            <button class="btn-num" onclick="inputChar('6')">6</button>
-            <button class="btn-num" onclick="inputChar('.')">.</button>
+      <!-- 按钮区 -->
+      <div class="grid grid-cols-4 gap-2.5 p-4">
+        <button @click="clearAll"  class="text-xl py-4 rounded-lg bg-red-500 text-white border-none cursor-pointer active:opacity-80">C</button>
+        <button @click="inputChar('/')" class="text-xl py-4 rounded-lg bg-blue-500 text-white border-none cursor-pointer active:opacity-80">÷</button>
+        <button @click="inputChar('*')" class="text-xl py-4 rounded-lg bg-blue-500 text-white border-none cursor-pointer active:opacity-80">×</button>
+        <button @click="inputChar('-')" class="text-xl py-4 rounded-lg bg-blue-500 text-white border-none cursor-pointer active:opacity-80">-</button>
 
-            <button class="btn-num" onclick="inputChar('1')">1</button>
-            <button class="btn-num" onclick="inputChar('2')">2</button>
-            <button class="btn-num" onclick="inputChar('3')">3</button>
-            <button class="btn-eq" onclick="calc()">=</button>
+        <button @click="inputChar('7')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">7</button>
+        <button @click="inputChar('8')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">8</button>
+        <button @click="inputChar('9')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">9</button>
+        <button @click="inputChar('+')" class="text-xl py-4 rounded-lg bg-blue-500 text-white border-none cursor-pointer active:opacity-80">+</button>
 
-            <button class="btn-num" onclick="inputChar('0')">0</button>
-            <button class="btn-num" onclick="backspace()">⌫</button>
-        </div>
-    </div>
+        <button @click="inputChar('4')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">4</button>
+        <button @click="inputChar('5')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">5</button>
+        <button @click="inputChar('6')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">6</button>
+        <button @click="inputChar('.')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">.</button>
 
-    <div class="history-box">
-        <div class="history-title">📜 计算历史（点击恢复输入）</div>
-        <div id="historyList"></div>
+        <button @click="inputChar('1')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">1</button>
+        <button @click="inputChar('2')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">2</button>
+        <button @click="inputChar('3')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">3</button>
+        <button @click="calc" class="text-xl py-4 rounded-lg bg-emerald-500 text-white border-none cursor-pointer active:opacity-80">=</button>
+
+        <button @click="inputChar('0')" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">0</button>
+        <button @click="backspace" class="text-xl py-4 rounded-lg bg-gray-100 border-none cursor-pointer active:bg-gray-200">⌫</button>
+      </div>
     </div>
 
-<script>
-    let expression = "";
-    let historyArr = [];
+    <!-- 历史 -->
+    <div class="mt-4 bg-white rounded-2xl shadow p-4">
+      <div class="font-bold mb-2 text-[15px]">📜 计算历史（点击恢复输入）</div>
+      <div v-if="historyArr.length === 0" class="text-gray-400 text-sm py-2">暂无记录</div>
+      <div v-for="(item, i) in historyArr" :key="i"
+           @click="restore(item)"
+           class="py-2 px-1.5 border-b border-gray-100 cursor-pointer text-sm active:bg-indigo-50">
+        {{ item.expr }} = {{ item.res }}
+      </div>
+    </div>
+  </div>
 
-    const exprDom = document.getElementById("exprView");
-    const numDom = document.getElementById("numView");
-    const upperDom = document.getElementById("upperView");
-    const historyDom = document.getElementById("historyList");
-
-    // 财务金额转大写，修复浮点数问题，入参为标准Number
-    function numberToChineseRMB(money) {
-        if(isNaN(money) || !isFinite(money)) return "金额错误";
-        // 四舍五入保留2位小数，转分为整数
-        const fen = Math.round(money * 100);
-        const yuan = Math.floor(fen / 100);
-        const jiao = Math.floor((fen % 100)/10);
-        const cent = fen % 10;
-
-        const digits = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
-        const units = ['','拾','佰','仟'];
-        const bigUnits = ['','万','亿'];
-
-        function intToChinese(n){
-            if(n===0) return "零";
-            let s = "";
-            let pos = 0;
-            let zeroFlag = false;
-            let temp = n;
-            while(temp>0){
-                let d = temp%10;
-                if(d>0){
-                    if(zeroFlag) s = digits[0] + s;
-                    s = digits[d] + units[pos%4] + s;
-                    zeroFlag = false;
-                }else{
-                    zeroFlag = true;
-                }
-                if(pos%4 === 0 && pos>0){
-                    s = bigUnits[pos/4] + s;
-                }
-                temp = Math.floor(temp/10);
-                pos++;
+  <script>
+    const { createApp } = Vue;
+    createApp({
+      data() {
+        return {
+          expression: "",
+          historyArr: [],
+          calcError: false,
+        };
+      },
+      computed: {
+        display() {
+          if (this.calcError) return { num: "计算错误", upper: "" };
+          if (!this.expression) return { num: "0", upper: this.rmb(0) };
+          try {
+            let evalStr = this.expression.replace(/×/g, "*");
+            let val = Number(eval(evalStr));
+            val = Math.round(val * 100) / 100;
+            if (isNaN(val) || !isFinite(val)) return { num: "--", upper: "" };
+            return { num: String(val), upper: this.rmb(val) };
+          } catch (e) {
+            return { num: "--", upper: "" };
+          }
+        },
+      },
+      methods: {
+        // 财务金额转大写（修复浮点数问题）
+        rmb(money) {
+          if (isNaN(money) || !isFinite(money)) return "金额错误";
+          const fen = Math.round(money * 100);
+          const yuan = Math.floor(fen / 100);
+          const jiao = Math.floor((fen % 100) / 10);
+          const cent = fen % 10;
+          const digits = ['零','壹','贰','叁','肆','伍','陆','柒','捌','玖'];
+          const units = ['','拾','佰','仟'];
+          const bigUnits = ['','万','亿'];
+          function intToChinese(n) {
+            if (n === 0) return "零";
+            let s = "", pos = 0, zeroFlag = false, temp = n;
+            while (temp > 0) {
+              let d = temp % 10;
+              if (d > 0) {
+                if (zeroFlag) s = digits[0] + s;
+                s = digits[d] + units[pos % 4] + s;
+                zeroFlag = false;
+              } else {
+                zeroFlag = true;
+              }
+              if (pos % 4 === 0 && pos > 0) s = bigUnits[pos / 4] + s;
+              temp = Math.floor(temp / 10);
+              pos++;
             }
             return s;
-        }
-
-        let res = "人民币";
-        res += intToChinese(yuan)+"元";
-        if(jiao===0 && cent===0){
-            res += "整";
-        }else{
-            if(jiao>0){
-                res += digits[jiao]+"角";
-            }else if(cent>0){
-                res += "零";
-            }
-            if(cent>0){
-                res += digits[cent]+"分";
-            }
-        }
-        return res;
-    }
-
-    function render(){
-        exprDom.innerText = expression;
-        try{
-            if(!expression){
-                numDom.innerText = "0";
-                upperDom.innerText = numberToChineseRMB(0);
-                return;
-            }
-            let evalStr = expression.replace(/×/g,"*");
-            let val = Number(eval(evalStr));
-            // 关键：四舍五入2位小数，消除浮点垃圾
-            val = Math.round(val * 100) / 100;
-            numDom.innerText = val;
-            upperDom.innerText = numberToChineseRMB(val);
-        }catch(e){
-            numDom.innerText = "--";
-            upperDom.innerText = "";
-        }
-    }
-
-    function inputChar(c){
-        expression += c;
-        render();
-    }
-
-    function backspace(){
-        expression = expression.slice(0,-1);
-        render();
-    }
-
-    function clearAll(){
-        expression = "";
-        render();
-    }
-
-    function calc(){
-        try{
-            if(!expression) return;
-            let evalStr = expression.replace(/×/g,"*");
+          }
+          let res = "人民币" + intToChinese(yuan) + "元";
+          if (jiao === 0 && cent === 0) res += "整";
+          else {
+            if (jiao > 0) res += digits[jiao] + "角";
+            else if (cent > 0) res += "零";
+            if (cent > 0) res += digits[cent] + "分";
+          }
+          return res;
+        },
+        inputChar(c) {
+          this.calcError = false;
+          this.expression += c;
+        },
+        backspace() {
+          this.calcError = false;
+          this.expression = this.expression.slice(0, -1);
+        },
+        clearAll() {
+          this.calcError = false;
+          this.expression = "";
+        },
+        calc() {
+          try {
+            if (!this.expression) return;
+            let evalStr = this.expression.replace(/×/g, "*");
             let result = Number(eval(evalStr));
-            result = Math.round(result *100)/100;
-            historyArr.unshift({expr:expression, res:result});
-            if(historyArr.length>20) historyArr.pop();
-            refreshHistory();
-            render();
-        }catch(err){
-            numDom.innerText="计算错误";
-        }
-    }
-
-    function refreshHistory(){
-        historyDom.innerHTML = "";
-        historyArr.forEach((item)=>{
-            const div = document.createElement("div");
-            div.className = "history-item";
-            div.innerText = `${item.expr} = ${item.res}`;
-            div.onclick = ()=>{
-                expression = item.expr;
-                render();
-            }
-            historyDom.appendChild(div);
-        })
-    }
-
-    //键盘输入支持
-    document.addEventListener("keydown",(e)=>{
-        const key = e.key;
-        if(/[0-9\.\+\-\/\*]/.test(key)){
+            result = Math.round(result * 100) / 100;
+            this.historyArr.unshift({ expr: this.expression, res: result });
+            if (this.historyArr.length > 20) this.historyArr.pop();
+            this.calcError = false;
+          } catch (err) {
+            this.calcError = true;
+          }
+        },
+        restore(item) {
+          this.calcError = false;
+          this.expression = item.expr;
+        },
+        onKey(e) {
+          const key = e.key;
+          if (/[0-9\.\+\-\/\*]/.test(key)) {
             let kc = key;
-            if(kc === "*") kc = "×";
-            inputChar(kc);
-        }else if(key === "Enter" || key === "="){
-            calc();
-        }else if(key === "Backspace"){
-            backspace();
-        }else if(key.toLowerCase() === "c"){
-            clearAll();
-        }
-    })
-
-    render();
-</script>
+            if (kc === "*") kc = "×";
+            this.inputChar(kc);
+          } else if (key === "Enter" || key === "=") {
+            this.calc();
+          } else if (key === "Backspace") {
+            this.backspace();
+          } else if (key.toLowerCase() === "c") {
+            this.clearAll();
+          }
+        },
+      },
+      mounted() {
+        window.addEventListener("keydown", this.onKey);
+      },
+    }).mount("#app");
+  </script>
 </body>
 </html>
