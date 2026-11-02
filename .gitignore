@@ -1,0 +1,8 @@
+# 工具/编辑器本地数据，不纳入版本管理
+.workbuddy/
+
+# 系统与编辑器产生的垃圾文件
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
