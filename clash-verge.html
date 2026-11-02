@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clash Verge 全局扩展脚本生成器</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .mono { font-family: Consolas, ui-monospace, SFMono-Regular, Menlo, monospace; }
+    #out { white-space: pre; }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen p-3 text-gray-800">
+  <div class="max-w-4xl mx-auto">
+    <a href="./index.html" class="text-blue-600 text-[15px] no-underline hover:underline">← 返回首页</a>
+
+    <h1 class="text-xl font-bold mt-3 mb-1">🧩 Clash Verge · 全局扩展脚本生成器</h1>
+    <p class="text-gray-500 text-sm mb-4">按优选 IP 批量生成 vless + ws 节点，并注入「节点选择」组与自定义规则。</p>
+
+    <!-- 基础参数 -->
+    <div class="bg-white rounded-2xl shadow p-4 mb-4">
+      <div class="font-bold mb-2 text-[15px]">节点基础参数</div>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">节点域名（server 的 Host / 固定域名）</label>
+          <input id="domain" value="io2.xxx.org"
+                 class="mono w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">UUID</label>
+          <input id="uuid" value="34f28c5d-xxxx-xxxx-d556-ccd351488068"
+                 class="mono w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">WS 路径</label>
+          <input id="path" value="/nnsu"
+                 class="mono w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">端口</label>
+          <input id="port" value="443"
+                 class="mono w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500">
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">节点名中的时间标记在生成时自动取当前时间（yyyyMMddHHmm）。</p>
+    </div>
+
+    <!-- 快捷录入 -->
+    <div class="bg-white rounded-2xl shadow p-4 mb-4">
+      <div class="font-bold mb-2 text-[15px]">快捷录入：粘贴 CloudflareST 测试结果</div>
+      <textarea id="rawInput" rows="7" placeholder="把 CloudflareST 的整段输出直接贴进来，例如：
+
+IP 地址           已发送  已接收  丢包率  平均延迟  下载速度(MB/s)  地区码
+103.31.4.108      4       4       0.00    199.16    57.92           DEN
+172.67.226.215    4       4       0.00    200.17    32.67           AMS"
+                class="mono w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500 resize-y"></textarea>
+
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 text-sm">
+        <button id="parseBtn"
+                class="px-3.5 py-2 rounded-lg bg-blue-500 text-white text-sm font-semibold active:opacity-80">解析并添加到列表</button>
+        <label class="flex items-center gap-1.5 text-gray-600">这批 IP 属于
+          <select id="batchIsp"
+                  class="px-2 py-1.5 text-sm border border-gray-300 rounded-lg bg-white outline-none focus:border-blue-500">
+            <option value="电信">电信</option>
+            <option value="移动">移动</option>
+            <option value="联通">联通</option>
+          </select>
+        </label>
+        <label class="flex items-center gap-1.5 text-gray-600">只保留下载速度 ≥
+          <input type="number" id="minSpeed" value="1" step="0.1" min="0"
+                 class="mono w-20 px-2 py-1.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500">
+          MB/s
+        </label>
+        <label class="flex items-center gap-1.5 text-gray-600">
+          <input type="checkbox" id="skipZero" checked class="w-4 h-4"> 跳过速度为 0
+        </label>
+        <label class="flex items-center gap-1.5 text-gray-600">
+          <input type="checkbox" id="dedupe" checked class="w-4 h-4"> 跳过列表中已存在的 IP
+        </label>
+      </div>
+      <div id="parseStatus" class="text-xs mt-2 min-h-[16px]"></div>
+      <p class="text-xs text-gray-400">解析出的 IP 按上面选择的宽带打标；备注列写地区码，速度列写「xx.xx MB/s」。</p>
+    </div>
+
+    <!-- IP 列表 -->
+    <div class="bg-white rounded-2xl shadow p-4 mb-4">
+      <div class="font-bold mb-2 text-[15px]">优选 IP 列表</div>
+
+      <div class="hidden sm:flex gap-2 text-xs text-gray-400 mb-1 px-1">
+        <span class="flex-[2]">IP 地址</span>
+        <span class="flex-[1.2]">宽带</span>
+        <span class="flex-[2]">备注（可选）</span>
+        <span class="flex-[1.4]">下载速度（可选）</span>
+        <span class="w-8 text-center">操作</span>
+      </div>
+
+      <div id="ipList" class="space-y-2"></div>
+
+      <div class="flex gap-2 mt-3">
+        <button id="addRowBtn"
+                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold active:bg-gray-200">+ 添加一行</button>
+        <button id="clearBtn"
+                class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 text-xs font-semibold active:bg-gray-200">清空列表</button>
+      </div>
+      <p class="text-xs text-gray-400 mt-2">宽带标识与时间标记自动写入节点名，如「【优选·电信】202610291430 DEN 57.92 MB/s」。</p>
+
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button id="genBtn"
+                class="px-4 py-2 rounded-lg bg-emerald-500 text-white text-sm font-semibold active:opacity-80">生成脚本</button>
+        <button id="copyBtn"
+                class="px-4 py-2 rounded-lg bg-gray-700 text-white text-sm font-semibold active:opacity-80">复制到剪贴板</button>
+      </div>
+    </div>
+
+    <!-- 输出 -->
+    <div class="bg-white rounded-2xl shadow p-4 mb-6">
+      <div class="font-bold mb-2 text-[15px]">生成的脚本（粘贴到 Clash Verge → 全局扩展脚本）</div>
+      <textarea id="out" rows="20" readonly
+                class="mono w-full px-2.5 py-2 text-sm border border-gray-300 rounded-lg bg-gray-50 outline-none overflow-x-auto"></textarea>
+    </div>
+  </div>
+
+  <div id="toast"
+       class="fixed bottom-6 right-6 px-4 py-2.5 rounded-lg bg-emerald-500 text-white text-sm font-semibold opacity-0 pointer-events-none transition-opacity duration-200">已复制</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const ISP_OPTIONS = ['电信', '移动', '联通'];
+
+  const $ = (id) => document.getElementById(id);
+
+  function esc(s) {
+    return String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  }
+
+  /* 生成 yyyyMMddHHmm */
+  function nowStamp() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}${p(d.getHours())}${p(d.getMinutes())}`;
+  }
+
+  function setStatus(msg, ok) {
+    const el = $('parseStatus');
+    el.textContent = msg;
+    el.className = 'text-xs mt-2 min-h-[16px] ' + (ok ? 'text-emerald-600' : 'text-red-500');
+    if (ok) {
+      setTimeout(() => { if (el.textContent === msg) el.textContent = ''; }, 4000);
+    }
+  }
+
+  /* ---------- IP 行管理 ---------- */
+  const inputCls = 'mono px-2 py-1.5 text-sm border border-gray-300 rounded-lg outline-none focus:border-blue-500';
+
+  function addIpRow(ip, isp, note, speed) {
+    const row = document.createElement('div');
+    row.className = 'ip-row flex flex-wrap sm:flex-nowrap gap-2 items-center';
+
+    const ispHtml = ISP_OPTIONS.map((o) =>
+      `<option value="${o}"${o === (isp || '电信') ? ' selected' : ''}>${o}</option>`
+    ).join('');
+
+    row.innerHTML = `
+      <input class="ip ${inputCls} flex-[2] min-w-[140px]" placeholder="例如 172.64.153.250" value="${ip || ''}">
+      <select class="isp ${inputCls} flex-[1.2] min-w-[72px] bg-white">${ispHtml}</select>
+      <input class="note ${inputCls} flex-[2] min-w-[90px]" placeholder="例如 DEN" value="${note || ''}">
+      <input class="speed ${inputCls} flex-[1.4] min-w-[110px]" placeholder="例如 57.92 MB/s" value="${speed || ''}">
+      <button class="del shrink-0 w-8 h-8 rounded-lg bg-red-50 text-red-500 text-lg leading-none active:bg-red-100" title="删除此行">×</button>
+    `;
+    row.querySelector('.del').addEventListener('click', () => row.remove());
+    $('ipList').appendChild(row);
+  }
+
+  function clearIpList() {
+    $('ipList').innerHTML = '';
+  }
+
+  function collectIPs() {
+    const out = [];
+    document.querySelectorAll('#ipList .ip-row').forEach((r) => {
+      const ip = r.querySelector('.ip').value.trim();
+      const isp = r.querySelector('.isp').value;
+      const note = r.querySelector('.note').value.trim();
+      const speed = r.querySelector('.speed').value.trim();
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) out.push({ ip, isp, note, speed });
+    });
+    return out;
+  }
+
+  function existingIpSet() {
+    return new Set(collectIPs().map((x) => x.ip));
+  }
+
+  /* ---------- 快捷录入解析 ---------- */
+  function parseAndAdd() {
+    const raw = $('rawInput').value;
+    const batchIsp = $('batchIsp').value;
+    const minSpeed = parseFloat($('minSpeed').value) || 0;
+    const skipZero = $('skipZero').checked;
+    const dedupe = $('dedupe').checked;
+
+    const lines = raw.split(/\r?\n/);
+    const ipRe = /^(\d{1,3}(?:\.\d{1,3}){3})\s+(.+)$/;
+
+    const parsed = [];
+    for (const line of lines) {
+      const t = line.trim();
+      if (!t) continue;
+      if (/^IP\s*地址/i.test(t)) continue;
+      if (/^-{3,}/.test(t)) continue;
+      if (/[\[\]]/.test(t) && /[█]/.test(t)) continue;
+      if (/可用:/.test(t)) continue;
+      if (/开始|测速|队列|丢包：/.test(t)) continue;
+
+      const m = t.match(ipRe);
+      if (!m) continue;
+      const ip = m[1];
+      if (!ip.split('.').every((x) => +x >= 0 && +x <= 255)) continue;
+
+      const rest = m[2].trim().split(/\s+/);
+      let speed = null;
+      let region = '';
+
+      // 先找末尾的地区码，速度通常紧邻其前
+      for (let i = rest.length - 1; i >= 0; i--) {
+        const tok = rest[i];
+        if (/^[A-Za-z]{2,4}$/.test(tok) || tok === 'N/A') {
+          region = tok;
+          if (i > 0 && /^\d+(\.\d+)?$/.test(rest[i - 1])) speed = parseFloat(rest[i - 1]);
+          break;
+        }
+      }
+      // 没有地区码时，退回「最后一个带小数的数字」
+      if (speed === null) {
+        for (let i = rest.length - 1; i >= 0; i--) {
+          if (/^\d+\.\d+$/.test(rest[i])) { speed = parseFloat(rest[i]); break; }
+        }
+      }
+      if (speed === null) continue;
+      if (skipZero && speed === 0) continue;
+      if (speed < minSpeed) continue;
+
+      parsed.push({
+        ip,
+        isp: batchIsp,
+        note: region || '',
+        speed: speed.toFixed(2) + ' MB/s',
+        _speed: speed,
+      });
+    }
+
+    if (parsed.length === 0) {
+      setStatus('未解析到有效行，请检查粘贴内容', false);
+      return;
+    }
+
+    const exist = dedupe ? existingIpSet() : new Set();
+    let added = 0;
+    let skipped = 0;
+
+    parsed.sort((a, b) => b._speed - a._speed);
+    parsed.forEach((p) => {
+      if (exist.has(p.ip)) { skipped++; return; }
+      addIpRow(p.ip, p.isp, p.note, p.speed);
+      exist.add(p.ip);
+      added++;
+    });
+
+    setStatus(
+      `解析到 ${parsed.length} 条，添加 ${added} 条（${batchIsp}）${skipped ? `，跳过重复 ${skipped} 条` : ''}`,
+      true
+    );
+  }
+
+  /* ---------- 生成 ---------- */
+  function generate() {
+    const domain = $('domain').value.trim();
+    const uuid = $('uuid').value.trim();
+    const path = $('path').value.trim();
+    const port = parseInt($('port').value, 10) || 443;
+    const stamp = nowStamp();
+    const ips = collectIPs();
+
+    if (!domain || !uuid || !path || ips.length === 0) {
+      alert('请至少填写域名、UUID、WS 路径，并给出一个合法 IP');
+      return;
+    }
+
+    const proxyDefs = ips.map((item, i) => {
+      const suffix = [stamp, item.note, item.speed].filter(Boolean).join(' ');
+      const name = `【优选·${item.isp}】${suffix}`.trim();
+      return `  const p${i} = {
+    name: "${esc(name)}",
+    type: "vless",
+    server: "${esc(item.ip)}",
+    port: ${port},
+    uuid: "${esc(uuid)}",
+    network: "ws",
+    tls: true,
+    udp: true,
+    "ws-opts": {
+      path: "${esc(path)}",
+      headers: { Host: "${esc(domain)}" }
+    }
+  };`;
+    }).join('\n\n');
+
+    const proxyList = ips.map((_, i) => `p${i}`).join(', ');
+
+    const script = `// 由 HTML 生成器自动生成 · ${stamp}
+function main(config) {
+${proxyDefs}
+
+  const allCustomProxies = [${proxyList}];
+
+  config.proxies = config.proxies || [];
+  allCustomProxies.forEach(p => {
+    config.proxies = config.proxies.filter(proxy => proxy.name !== p.name);
+    config.proxies.push(p);
+  });
+
+  if (config["proxy-groups"]) {
+    config["proxy-groups"].forEach(group => {
+      if (typeof group.name === "string" && group.name.includes("节点选择")) {
+        group.proxies = group.proxies || [];
+        allCustomProxies.forEach(p => {
+          if (!group.proxies.includes(p.name)) {
+            group.proxies.push(p.name);
+          }
+        });
+      }
+    });
+  }
+
+  const lucidRules = [
+    "DOMAIN-SUFFIX,lucidtrading.com,DIRECT"
+  ];
+  config.rules = config.rules || [];
+  config.rules = config.rules.filter(rule => !rule.includes("lucidtrading.com"));
+  config.rules.unshift(...lucidRules);
+
+  return config;
+}`;
+
+    $('out').value = script;
+  }
+
+  function copyOut() {
+    const out = $('out');
+    if (!out.value) { alert('先点“生成脚本”'); return; }
+
+    const done = () => {
+      const t = $('toast');
+      t.classList.remove('opacity-0');
+      t.classList.add('opacity-100');
+      setTimeout(() => {
+        t.classList.add('opacity-0');
+        t.classList.remove('opacity-100');
+      }, 1200);
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(out.value).then(done).catch(() => {
+        out.select();
+        document.execCommand('copy');
+        done();
+      });
+    } else {
+      out.removeAttribute('readonly');
+      out.select();
+      document.execCommand('copy');
+      out.setAttribute('readonly', 'readonly');
+      done();
+    }
+  }
+
+  /* ---------- 初始化 ---------- */
+  $('parseBtn').addEventListener('click', parseAndAdd);
+  $('addRowBtn').addEventListener('click', () => addIpRow());
+  $('clearBtn').addEventListener('click', clearIpList);
+  $('genBtn').addEventListener('click', generate);
+  $('copyBtn').addEventListener('click', copyOut);
+
+  addIpRow('172.64.153.250', '电信', '主用', '87 MB/s');
+  addIpRow('104.27.111.15', '移动', '备用', '4.24 MB/s');
+})();
+</script>
+</body>
+</html>
