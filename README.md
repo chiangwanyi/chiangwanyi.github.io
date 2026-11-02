@@ -45,9 +45,27 @@
 ## 技术栈
 
 - 纯静态 HTML / CSS / JavaScript
-- 首页通过 CDN 引入 [Vue 3](https://unpkg.com/vue@3) 与 [Tailwind CSS](https://cdn.tailwindcss.com)
-- 计算器为原生 JS 实现，无第三方依赖
+- Vue 3 与 Tailwind CSS **全部本地化**（`assets/` 目录），不依赖任何外部 CDN，国内访问无跨境请求、可离线使用
+  - `assets/vue.global.prod.js`：Vue 3.5.44 生产版（取自 npmmirror）
+  - `assets/tailwind.css`：用 Tailwind CLI 3.4.17 预编译并按现有页面裁剪后的静态样式（约 12 KB，替代原来的浏览器端 JIT 版 `cdn.tailwindcss.com`，省掉 ~400 KB 脚本和运行时编译）
+- 计算器与脚本生成器为原生 JS / Vue 实现，均无第三方依赖
 - 部署平台：[GitHub Pages](https://pages.github.com/)
+
+### 改样式后如何重新生成 assets/tailwind.css
+
+新增/修改 HTML 里的 Tailwind 类名后，需要重新编译一次（只需一次，产物提交进仓库）：
+
+```bash
+npx tailwindcss@3.4.17 -i /dev/stdin -o assets/tailwind.css --content "./*.html" --minify
+# 输入内容为三行：@tailwind base; @tailwind components; @tailwind utilities;
+```
+
+或用临时 input.css：
+
+```bash
+printf '@tailwind base;\n@tailwind components;\n@tailwind utilities;\n' > /tmp/in.css
+npx tailwindcss@3.4.17 -i /tmp/in.css -o assets/tailwind.css --content "./*.html" --minify
+```
 
 ## 本地预览
 
